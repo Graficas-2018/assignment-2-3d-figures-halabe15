@@ -1,6 +1,6 @@
 var projectionMatrix;
 
-var shaderProgram, shaderVertexPositionAttribute, shaderVertexColorAttribute, 
+var shaderProgram, shaderVertexPositionAttribute, shaderVertexColorAttribute,
     shaderProjectionMatrixUniform, shaderModelViewMatrixUniform;
 
 var duration = 5000; // ms
@@ -8,7 +8,7 @@ var duration = 5000; // ms
 // Attributes: Input variables used in the vertex shader. Since the vertex shader is called on each vertex, these will be different every time the vertex shader is invoked.
 // Uniforms: Input variables for both the vertex and fragment shaders. These do not change values from vertex to vertex.
 // Varyings: Used for passing data from the vertex shader to the fragment shader. Represent information for which the shader can output different value for each vertex.
-var vertexShaderSource =    
+var vertexShaderSource =
     "    attribute vec3 vertexPos;\n" +
     "    attribute vec4 vertexColor;\n" +
     "    uniform mat4 modelViewMatrix;\n" +
@@ -27,7 +27,7 @@ var vertexShaderSource =
 // - highp for vertex positions,
 // - mediump for texture coordinates,
 // - lowp for colors.
-var fragmentShaderSource = 
+var fragmentShaderSource =
     "    precision lowp float;\n" +
     "    varying vec4 vColor;\n" +
     "    void main(void) {\n" +
@@ -39,10 +39,10 @@ function initWebGL(canvas)
     var gl = null;
     var msg = "Your browser does not support WebGL, " +
         "or it is not enabled by default.";
-    try 
+    try
     {
         gl = canvas.getContext("experimental-webgl");
-    } 
+    }
     catch (e)
     {
         msg = "Error creating WebGL Context!: " + e.toString();
@@ -54,7 +54,7 @@ function initWebGL(canvas)
         throw new Error(msg);
     }
 
-    return gl;        
+    return gl;
  }
 
 function initViewport(gl, canvas)
@@ -67,9 +67,461 @@ function initGL(canvas)
     // Create a project matrix with 45 degree field of view
     projectionMatrix = mat4.create();
     mat4.perspective(projectionMatrix, Math.PI / 4, canvas.width / canvas.height, 1, 10000);
+    mat4.translate(projectionMatrix, projectionMatrix, [0, 0, -5]);
 }
 
 // TO DO: Create the functions for each of the figures.
+function createPyramid(gl, translation, rotationAxis)
+{
+    // Vertex Data
+    var vertexBuffer;
+    vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+    var verts = [
+      // Base
+      0.0, 1.0,  1.0,
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      2 * (-0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      0.0, 1.0,  1.0,
+
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      0.0, 1.0,  1.0,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      // Wall 1
+      0.0, 1.0,  1.0,
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      0.0, 0.0,  2.5,
+
+      // Wall 2
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      0.0, 0.0,  2.5,
+      // Wall 3
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      0.0, 0.0,  2.5,
+      // Wall 4
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      2 * (-0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      0.0, 0.0,  2.5,
+      // Wall 5
+      2 * (-0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      0.0, 1.0,  1.0,
+      0.0, 0.0,  2.5,
+
+     ];
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+    // Color data
+    var colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    var faceColors = [];
+
+    for (var i = 0; i < 6; i++) {
+      faceColors.push([Math.random(), Math.random(), Math.random(), 1.0]);
+    }
+
+    // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the cube's face.
+    var vertexColors = [];
+    // for (var i in faceColors)
+    // {
+    //     var color = faceColors[i];
+    //     for (var j=0; j < 4; j++)
+    //         vertexColors = vertexColors.concat(color);
+    // }
+    var count = 0;
+    for (const color of faceColors){
+      count++;
+      if (count < 2) {
+        for (var j=0; j < 9; j++)
+          vertexColors = vertexColors.concat(color);
+        continue;
+      }
+      for (var j=0; j < 3; j++)
+        vertexColors = vertexColors.concat(color);
+    }
+
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColors), gl.STATIC_DRAW);
+
+    // Index data (defines the triangles to be drawn).
+    var pyramidIndexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, pyramidIndexBuffer);
+    var pyramidIndices = [
+        0,1,2, 3,4,5, 6,7,8, // Base
+        9,10,11, // Wall 1
+        12,13,14, // Wall 2
+        15,16,17, // Wall 3
+        18,19,20, // Wall 4
+        21,22,23 // Wall 5
+    ];
+
+    // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
+    // Uint16Array: Array of 16-bit unsigned integers.
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(pyramidIndices), gl.STATIC_DRAW);
+
+    var pyramid = {
+            buffer:vertexBuffer, colorBuffer:colorBuffer, indices:pyramidIndexBuffer,
+            vertSize:3, nVerts:24, colorSize:4, nColors:24 , nIndices: pyramidIndices.length,
+            primtype:gl.TRIANGLES, modelViewMatrix: mat4.create(), currentTime : Date.now()};
+
+    mat4.translate(pyramid.modelViewMatrix, pyramid.modelViewMatrix, translation);
+
+    pyramid.update = function()
+    {
+        var now = Date.now();
+        var deltat = now - this.currentTime;
+        this.currentTime = now;
+        var fract = deltat / duration;
+        var angle = Math.PI * 2 * fract;
+
+        // Rotates a mat4 by the given angle
+        // mat4 out the receiving matrix
+        // mat4 a the matrix to rotate
+        // Number rad the angle to rotate the matrix by
+        // vec3 axis the axis to rotate around
+        mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
+    };
+
+    return pyramid;
+}
+
+function createOctahedron(gl, translation, rotationAxis)
+{
+    // Vertex Data
+    var vertexBuffer;
+    vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+    var verts = [
+      // Base
+      -1.0, -1.0,  1.0,
+      1.0, -1.0,  1.0,
+      -1.0, 1.0,  1.0,
+      1.0, 1.0,  1.0,
+
+      0.0, 0.0, 2.0,
+      -1.0, -1.0,  1.0,
+      1.0, -1.0,  1.0,
+
+      0.0, 0.0, 2.0,
+      1.0, -1.0,  1.0,
+      1.0, 1.0,  1.0,
+
+      0.0, 0.0, 2.0,
+      1.0, 1.0,  1.0,
+      -1.0, 1.0,  1.0,
+
+      0.0, 0.0, 2.0,
+      -1.0, 1.0,  1.0,
+      -1.0, -1.0,  1.0,
+
+      0.0, 0.0, 0,
+      -1.0, -1.0,  1.0,
+      1.0, -1.0,  1.0,
+
+      0.0, 0.0, 0,
+      1.0, -1.0,  1.0,
+      1.0, 1.0,  1.0,
+
+      0.0, 0.0, 0,
+      1.0, 1.0,  1.0,
+      -1.0, 1.0,  1.0,
+
+      0.0, 0.0, 0,
+      -1.0, 1.0,  1.0,
+      -1.0, -1.0,  1.0,
+
+     ];
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+    // Color data
+    var colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    var faceColors = [];
+
+    for (var i = 0; i < 10; i++) {
+      faceColors.push([Math.random(), Math.random(), Math.random(), 1.0]);
+    }
+
+    // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the cube's face.
+    var vertexColors = [];
+    // for (var i in faceColors)
+    // {
+    //     var color = faceColors[i];
+    //     for (var j=0; j < 4; j++)
+    //         vertexColors = vertexColors.concat(color);
+    // }
+    var count = 0;
+    for (const color of faceColors){
+      count++;
+      if (count < 2) {
+        for (var j=0; j < 4; j++)
+          vertexColors = vertexColors.concat(color);
+        continue;
+      }
+      for (var j=0; j < 3; j++)
+        vertexColors = vertexColors.concat(color);
+    }
+
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColors), gl.STATIC_DRAW);
+
+    // Index data (defines the triangles to be drawn).
+    var octahedronIndexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, octahedronIndexBuffer);
+    var octahedronIndices = [
+      0,1,2, 1,2,3, // Middle Square
+      4,5,6,
+      7,8,9,
+      10,11,12,
+      13,14,15,
+      16,17,18,
+      19,20,21,
+      22,23,24,
+      25,26,27
+    ];
+
+    // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
+    // Uint16Array: Array of 16-bit unsigned integers.
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(octahedronIndices), gl.STATIC_DRAW);
+
+    var octahedron = {
+            buffer:vertexBuffer, colorBuffer:colorBuffer, indices:octahedronIndexBuffer,
+            vertSize:3, nVerts:24, colorSize:4, nColors:25 , nIndices: octahedronIndices.length,
+            primtype:gl.TRIANGLES, modelViewMatrix: mat4.create(), currentTime : Date.now()};
+
+    mat4.translate(octahedron.modelViewMatrix, octahedron.modelViewMatrix, translation);
+
+    octahedron.update = function()
+    {
+        var now = Date.now();
+        var deltat = now - this.currentTime;
+        this.currentTime = now;
+        var fract = deltat / duration;
+        var angle = Math.PI * 2 * fract;
+
+        // Rotates a mat4 by the given angle
+        // mat4 out the receiving matrix
+        // mat4 a the matrix to rotate
+        // Number rad the angle to rotate the matrix by
+        // vec3 axis the axis to rotate around
+        mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
+    };
+
+    return octahedron;
+}
+
+function createScutoid(gl, translation, rotationAxis)
+{
+    // Vertex Data
+    var vertexBuffer;
+    vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+    var verts = [
+      // Polygon
+      0.0, 1.0,  1.0,
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      2 * (-0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      0.0, 1.0,  1.0,
+
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      0.0, 1.0,  1.0,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+
+      // Hexagon
+
+      1.0, 0.0, -2,
+      0.50, 2 * (0.4330127018922193), -2,
+      0.50, -2 * (0.4330127018922193), -2,
+
+      -1.0, 0.0, -2,
+      -0.50, 2 * (0.4330127018922193), -2,
+      -0.50, -2 * (0.4330127018922193), -2,
+
+      0.50, 2 * (0.4330127018922193), -2,
+      -0.50, 2 * (0.4330127018922193), -2,
+      -0.50, -2 * (0.4330127018922193), -2,
+
+      0.50, 2 * (0.4330127018922193), -2,
+      0.50, -2 * (0.4330127018922193), -2,
+      -0.50, -2 * (0.4330127018922193), -2,
+
+      // Rect Bottom
+      -0.50, -2 * (0.4330127018922193), -2,
+      0.50, -2 * (0.4330127018922193), -2,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      0.50, -2 * (0.4330127018922193), -2,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      // Rect Left
+      -0.50, -2 * (0.4330127018922193), -2,
+      -1.0, 0, -2,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      2 * (-0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      2 * (-0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      -1.0, 0, -2,
+
+      // Rect Right
+      0.50, -2 * (0.4330127018922193), -2,
+      1.0, 0, -2,
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      2 * (0.2938926261462366), 2 * (-0.40450849718747367), 1.0,
+      1.0, 0, -2,
+
+      // Hexagon Mini Triangle
+      0.50, 2 * (0.4330127018922193), -2,
+      -0.50, 2 * (0.4330127018922193), -2,
+      0, 2 * (0.4330127018922193), -1,
+
+      // Right Rectangle A side Triangle
+      0, 2 * (0.4330127018922193), -1,
+      0.0, 1.0,  1.0,
+      0.50, 2 * (0.4330127018922193), -2,
+
+      0.0, 1.0,  1.0,
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      0.50, 2 * (0.4330127018922193), -2,
+
+      1.0, 0, -2,
+      0.50, 2 * (0.4330127018922193), -2,
+      2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+
+      // Left Rectangle A side Triangle
+      0.0, 1.0,  1.0,
+      -2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+      -0.50, 2 * (0.4330127018922193), -2,
+
+      -1.0, 0, -2,
+      -0.50, 2 * (0.4330127018922193), -2,
+      -2 * (0.4755282581475768), 2 * (0.15450849718747361),  1.0,
+
+      0, 2 * (0.4330127018922193), -1,
+      0.0, 1.0,  1.0,
+      -0.50, 2 * (0.4330127018922193), -2,
+
+     ];
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+    // Color data
+    var colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    var faceColors = [];
+
+    for (var i = 0; i < 16; i++) {
+      faceColors.push([Math.random(), Math.random(), Math.random(), 1.0]);
+    }
+
+    // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the cube's face.
+    var vertexColors = [];
+    // for (var i in faceColors)
+    // {
+    //     var color = faceColors[i];
+    //     for (var j=0; j < 4; j++)
+    //         vertexColors = vertexColors.concat(color);
+    // }
+    var count = 0;
+    for (const color of faceColors){
+      count++;
+      switch (count) {
+        //Pentagon
+        case 1:
+          for (var j=0; j < 9; j++)
+            vertexColors = vertexColors.concat(color);
+          break;
+        // Hexagon
+        case 2:
+          for (var j=0; j < 12; j++)
+            vertexColors = vertexColors.concat(color);
+          break;
+        // Triangle
+        case 6:
+          for (var j=0; j < 3; j++)
+            vertexColors = vertexColors.concat(color);
+          break;
+
+        // Rare Rectangles
+        case 7:
+          for (var j=0; j < 9; j++)
+            vertexColors = vertexColors.concat(color);
+          break;
+        case 8:
+          for (var j=0; j < 9; j++)
+            vertexColors = vertexColors.concat(color);
+          break;
+
+        // Rectangles
+        default:
+          for (var j=0; j < 6; j++)
+            vertexColors = vertexColors.concat(color);
+      }
+
+    }
+
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColors), gl.STATIC_DRAW);
+
+    // Index data (defines the triangles to be drawn).
+    var scutoidIndexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, scutoidIndexBuffer);
+    var scutoidIndices = [
+        0,1,2, 3,4,5, 6,7,8,                      // Pentagon
+        9,10,11,  12,13,14,  15,16,17,  18,19,20, // Hexagon
+        21,22,23, 24,25,26,                       // Rect Bottom
+        27,28,29, 30,31,32,                       // Rect Left
+        33,34,35, 36,37,38,                       // Rect Right
+        39,40,41,                                 // Hex Mini Triangle
+        42,43,44,  45,46,47,  48,49,50,           // Rect Right Triangle
+        51,52,53,  54,55,56,  57,58,59            // Rect Left Triangle
+    ];
+
+    // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
+    // Uint16Array: Array of 16-bit unsigned integers.
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(scutoidIndices), gl.STATIC_DRAW);
+
+    var scutoid = {
+            buffer:vertexBuffer, colorBuffer:colorBuffer, indices:scutoidIndexBuffer,
+            vertSize:3, nVerts: (verts.length)/3, colorSize:4, nColors:24 , nIndices: scutoidIndices.length,
+            primtype:gl.TRIANGLES, modelViewMatrix: mat4.create(), currentTime : Date.now()};
+
+    mat4.translate(scutoid.modelViewMatrix, scutoid.modelViewMatrix, translation);
+
+    scutoid.update = function()
+    {
+        var now = Date.now();
+        var deltat = now - this.currentTime;
+        this.currentTime = now;
+        var fract = deltat / duration;
+        var angle = Math.PI * 2 * fract;
+
+        // Rotates a mat4 by the given angle
+        // mat4 out the receiving matrix
+        // mat4 a the matrix to rotate
+        // Number rad the angle to rotate the matrix by
+        // vec3 axis the axis to rotate around
+        mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
+    };
+
+    return scutoid;
+}
 
 function createShader(gl, str, type)
 {
@@ -111,7 +563,7 @@ function initShader(gl)
 
     shaderVertexColorAttribute = gl.getAttribLocation(shaderProgram, "vertexColor");
     gl.enableVertexAttribArray(shaderVertexColorAttribute);
-    
+
     shaderProjectionMatrixUniform = gl.getUniformLocation(shaderProgram, "projectionMatrix");
     shaderModelViewMatrixUniform = gl.getUniformLocation(shaderProgram, "modelViewMatrix");
 
@@ -120,7 +572,7 @@ function initShader(gl)
     }
 }
 
-function draw(gl, objs) 
+function draw(gl, objs)
 {
     // clear the background (with black)
     gl.clearColor(0.1, 0.1, 0.1, 1.0);
@@ -140,7 +592,7 @@ function draw(gl, objs)
 
         gl.bindBuffer(gl.ARRAY_BUFFER, obj.colorBuffer);
         gl.vertexAttribPointer(shaderVertexColorAttribute, obj.colorSize, gl.FLOAT, false, 0, 0);
-        
+
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.indices);
 
         gl.uniformMatrix4fv(shaderProjectionMatrixUniform, false, projectionMatrix);
@@ -156,7 +608,7 @@ function draw(gl, objs)
     }
 }
 
-function run(gl, objs) 
+function run(gl, objs)
 {
     // The window.requestAnimationFrame() method tells the browser that you wish to perform an animation and requests that the browser call a specified function to update an animation before the next repaint. The method takes a callback as an argument to be invoked before the repaint.
     requestAnimationFrame(function() { run(gl, objs); });
